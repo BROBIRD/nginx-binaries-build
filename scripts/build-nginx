@@ -55,6 +55,7 @@ configure() {
 		--with-http_realip_module \
 		--with-http_auth_request_module \
 		--with-http_secure_link_module \
+		--with-http_dav_module \
 		--without-http_ssi_module \
 		--without-http_mirror_module \
 		--without-http_geo_module \

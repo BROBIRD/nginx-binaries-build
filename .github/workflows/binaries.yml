@@ -27,202 +27,203 @@ env:
     openresty/echo-nginx-module
     openresty/headers-more-nginx-module
     openresty/set-misc-nginx-module
+    arut/nginx-dav-ext-module
   # Don't update binaries with unchanged sources.
   SKIP_SAME_SOURCES: true
 
 jobs:
-  njs-multi-linux:
-    name: njs-${{ matrix.NJS_VERSION }}${{ matrix.VARIANT }}-${{ matrix.ARCH }}-linux
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        NJS_VERSION:
-          - 0.x.x
-        VARIANT:
-          - '-debug'
-          - ''
-        ARCH:
-          - x86_64
-          - aarch64
-          - armv7
-          - ppc64le
-    steps:
-      - name: Checkout master branch
-        uses: actions/checkout@v2
-        with:
-          path: master
+  # njs-multi-linux:
+  #   name: njs-${{ matrix.NJS_VERSION }}${{ matrix.VARIANT }}-${{ matrix.ARCH }}-linux
+  #   runs-on: ubuntu-20.04
+  #   strategy:
+  #     matrix:
+  #       NJS_VERSION:
+  #         - 0.x.x
+  #       VARIANT:
+  #         - '-debug'
+  #         - ''
+  #       ARCH:
+  #         - x86_64
+  #         - aarch64
+  #         - armv7
+  #         - ppc64le
+  #   steps:
+  #     - name: Checkout master branch
+  #       uses: actions/checkout@v2
+  #       with:
+  #         path: master
 
-      - name: Download and extract njs
-        run: ./master/scripts/fetch-sources -d . nginx/njs@${{ matrix.NJS_VERSION }}
+  #     - name: Download and extract njs
+  #       run: ./master/scripts/fetch-sources -d . nginx/njs@${{ matrix.NJS_VERSION }}
 
-      - name: Install Alpine ${{ env.ALPINE_BRANCH }} for ${{ matrix.ARCH }}
-        uses: jirutka/setup-alpine@v1
-        with:
-          arch: ${{ matrix.ARCH }}
-          branch: ${{ env.ALPINE_BRANCH }}
-          packages: >
-            build-base
-            libedit-dev
-            libedit-static
-            ncurses-dev
-            ncurses-static
-            openssl-dev
-            openssl-libs-static
-            pcre-dev
+  #     - name: Install Alpine ${{ env.ALPINE_BRANCH }} for ${{ matrix.ARCH }}
+  #       uses: jirutka/setup-alpine@v1
+  #       with:
+  #         arch: ${{ matrix.ARCH }}
+  #         branch: ${{ env.ALPINE_BRANCH }}
+  #         packages: >
+  #           build-base
+  #           libedit-dev
+  #           libedit-static
+  #           ncurses-dev
+  #           ncurses-static
+  #           openssl-dev
+  #           openssl-libs-static
+  #           pcre-dev
 
-      - name: Build njs
-        env:
-          VARIANT: ${{ matrix.VARIANT }}
-          CFLAGS: ${{ env.CFLAGS }}
-          LDFLAGS: ${{ env.LINUX_LDFLAGS }}
-        run: ./master/scripts/build-njs
-        shell: alpine.sh {0}
+  #     - name: Build njs
+  #       env:
+  #         VARIANT: ${{ matrix.VARIANT }}
+  #         CFLAGS: ${{ env.CFLAGS }}
+  #         LDFLAGS: ${{ env.LINUX_LDFLAGS }}
+  #       run: ./master/scripts/build-njs
+  #       shell: alpine.sh {0}
 
-      - name: Upload njs binary to artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          path: artifact/*
+  #     - name: Upload njs binary to artifacts
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         path: artifact/*
 
-  njs-x86_64-darwin:
-    name: njs-${{ matrix.NJS_VERSION }}${{ matrix.VARIANT }}-x86_64-darwin
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        NJS_VERSION:
-          - 0.x.x
-        VARIANT:
-          - '-debug'
-          - ''
-    steps:
-      - name: Install dependencies
-        run: brew install gsed jq libedit openssl@1.1 ncurses pcre
+  # njs-x86_64-darwin:
+  #   name: njs-${{ matrix.NJS_VERSION }}${{ matrix.VARIANT }}-x86_64-darwin
+  #   runs-on: macos-latest
+  #   strategy:
+  #     matrix:
+  #       NJS_VERSION:
+  #         - 0.x.x
+  #       VARIANT:
+  #         - '-debug'
+  #         - ''
+  #   steps:
+  #     - name: Install dependencies
+  #       run: brew install gsed jq libedit openssl@1.1 ncurses pcre
 
-      - name: Checkout master branch
-        uses: actions/checkout@v2
-        with:
-          path: master
+  #     - name: Checkout master branch
+  #       uses: actions/checkout@v2
+  #       with:
+  #         path: master
 
-      - name: Download and extract njs
-        run: ./master/scripts/fetch-sources -d . nginx/njs@${{ matrix.NJS_VERSION }}
+  #     - name: Download and extract njs
+  #       run: ./master/scripts/fetch-sources -d . nginx/njs@${{ matrix.NJS_VERSION }}
 
-      # cmake prefers dynamic libs and there's no option to change it, so
-      # we have to remove them to give it no other option than using static.
-      - name: Remove dylibs
-        run: |
-          rm /usr/local/opt/libedit/lib/*.dylib
-          rm /usr/local/opt/openssl/lib/*.dylib
-          rm /usr/local/opt/ncurses/lib/*.dylib
-          rm /usr/local/opt/pcre/lib/*.dylib
+  #     # cmake prefers dynamic libs and there's no option to change it, so
+  #     # we have to remove them to give it no other option than using static.
+  #     - name: Remove dylibs
+  #       run: |
+  #         rm /usr/local/opt/libedit/lib/*.dylib
+  #         rm /usr/local/opt/openssl/lib/*.dylib
+  #         rm /usr/local/opt/ncurses/lib/*.dylib
+  #         rm /usr/local/opt/pcre/lib/*.dylib
 
-      - name: Build njs
-        env:
-          VARIANT: ${{ matrix.VARIANT }}
-          CFLAGS: ${{ env.CFLAGS }} -I/usr/local/opt/libedit/include -I/usr/local/opt/openssl/include -I/usr/local/opt/ncurses/include -I/usr/local/opt/pcre/include
-          LDFLAGS: ${{ env.DARWIN_LDFLAGS }} -L/usr/local/opt/libedit/lib -L/usr/local/opt/openssl/lib -L/usr/local/opt/ncurses/lib -L/usr/local/opt/pcre/lib
-        run: ./master/scripts/build-njs
+  #     - name: Build njs
+  #       env:
+  #         VARIANT: ${{ matrix.VARIANT }}
+  #         CFLAGS: ${{ env.CFLAGS }} -I/usr/local/opt/libedit/include -I/usr/local/opt/openssl/include -I/usr/local/opt/ncurses/include -I/usr/local/opt/pcre/include
+  #         LDFLAGS: ${{ env.DARWIN_LDFLAGS }} -L/usr/local/opt/libedit/lib -L/usr/local/opt/openssl/lib -L/usr/local/opt/ncurses/lib -L/usr/local/opt/pcre/lib
+  #       run: ./master/scripts/build-njs
 
-      - name: Upload njs binary to artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          path: artifact/*
+  #     - name: Upload njs binary to artifacts
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         path: artifact/*
 
-  nginx-multi-linux:
-    name: nginx-${{ matrix.NGINX_VERSION }}-${{ matrix.ARCH }}-linux
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        NGINX_VERSION:
-          - 1.20.x
-          - 1.21.x
-          - 1.22.x
-        ARCH:
-          - x86_64
-          - aarch64
-          - armv7
-          - ppc64le
-    steps:
-      - name: Checkout master branch
-        uses: actions/checkout@v2
-        with:
-          path: master
+  # nginx-multi-linux:
+  #   name: nginx-${{ matrix.NGINX_VERSION }}-${{ matrix.ARCH }}-linux
+  #   runs-on: ubuntu-20.04
+  #   strategy:
+  #     matrix:
+  #       NGINX_VERSION:
+  #         - 1.20.x
+  #         - 1.21.x
+  #         - 1.22.x
+  #       ARCH:
+  #         - x86_64
+  #         - aarch64
+  #         - armv7
+  #         - ppc64le
+  #   steps:
+  #     - name: Checkout master branch
+  #       uses: actions/checkout@v2
+  #       with:
+  #         path: master
 
-      - name: Download and extract nginx
-        run: ./master/scripts/fetch-sources -d . nginx/nginx@release-${{ matrix.NGINX_VERSION }}
+  #     - name: Download and extract nginx
+  #       run: ./master/scripts/fetch-sources -d . nginx/nginx@release-${{ matrix.NGINX_VERSION }}
 
-      - name: Download and extract nginx modules
-        run: ./master/scripts/fetch-sources $NGINX_MODULES
+  #     - name: Download and extract nginx modules
+  #       run: ./master/scripts/fetch-sources $NGINX_MODULES
 
-      - name: Install Alpine ${{ env.ALPINE_BRANCH }} for ${{ matrix.ARCH }}
-        uses: jirutka/setup-alpine@v1
-        with:
-          arch: ${{ matrix.ARCH }}
-          branch: ${{ env.ALPINE_BRANCH }}
-          packages: >
-            build-base
-            linux-headers
-            openssl-dev
-            openssl-libs-static
-            pcre-dev
-            zlib-dev
-            zlib-static
+  #     - name: Install Alpine ${{ env.ALPINE_BRANCH }} for ${{ matrix.ARCH }}
+  #       uses: jirutka/setup-alpine@v1
+  #       with:
+  #         arch: ${{ matrix.ARCH }}
+  #         branch: ${{ env.ALPINE_BRANCH }}
+  #         packages: >
+  #           build-base
+  #           linux-headers
+  #           openssl-dev
+  #           openssl-libs-static
+  #           pcre-dev
+  #           zlib-dev
+  #           zlib-static
 
-      - name: Build nginx
-        env:
-          NGINX_MODULES: ${{ env.NGINX_MODULES }}
-          VARIANT: ${{ matrix.VARIANT }}
-          CFLAGS: ${{ env.CFLAGS }}
-          LDFLAGS: ${{ env.LINUX_LDFLAGS }}
-        run: ./master/scripts/build-nginx
-        shell: alpine.sh {0}
+  #     - name: Build nginx
+  #       env:
+  #         NGINX_MODULES: ${{ env.NGINX_MODULES }}
+  #         VARIANT: ${{ matrix.VARIANT }}
+  #         CFLAGS: ${{ env.CFLAGS }}
+  #         LDFLAGS: ${{ env.LINUX_LDFLAGS }}
+  #       run: ./master/scripts/build-nginx
+  #       shell: alpine.sh {0}
 
-      - name: Upload nginx binary to artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          path: artifact/*
+  #     - name: Upload nginx binary to artifacts
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         path: artifact/*
 
-  nginx-x86_64-darwin:
-    name: nginx-${{ matrix.NGINX_VERSION }}-x86_64-darwin
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        NGINX_VERSION:
-          - 1.20.x
-          - 1.21.x
-          - 1.22.x
-    steps:
-      - name: Install dependencies
-        run: brew install gsed jq openssl@1.1 pcre zlib
+  # nginx-x86_64-darwin:
+  #   name: nginx-${{ matrix.NGINX_VERSION }}-x86_64-darwin
+  #   runs-on: macos-latest
+  #   strategy:
+  #     matrix:
+  #       NGINX_VERSION:
+  #         - 1.20.x
+  #         - 1.21.x
+  #         - 1.22.x
+  #   steps:
+  #     - name: Install dependencies
+  #       run: brew install gsed jq openssl@1.1 pcre zlib
 
-      - name: Checkout master branch
-        uses: actions/checkout@v2
-        with:
-          path: master
+  #     - name: Checkout master branch
+  #       uses: actions/checkout@v2
+  #       with:
+  #         path: master
 
-      - name: Download and extract nginx
-        run: ./master/scripts/fetch-sources -d . nginx/nginx@release-${{ matrix.NGINX_VERSION }}
+  #     - name: Download and extract nginx
+  #       run: ./master/scripts/fetch-sources -d . nginx/nginx@release-${{ matrix.NGINX_VERSION }}
 
-      - name: Download and extract nginx modules
-        run: ./master/scripts/fetch-sources $NGINX_MODULES
+  #     - name: Download and extract nginx modules
+  #       run: ./master/scripts/fetch-sources $NGINX_MODULES
 
-      # cmake prefers dynamic libs and there's no option to change it, so
-      # we have to remove them to give it no other option than using static.
-      - name: Remove dylibs
-        run: |
-          rm /usr/local/opt/openssl/lib/*.dylib
-          rm /usr/local/opt/pcre/lib/*.dylib
-          rm /usr/local/opt/zlib/lib/*.dylib
+  #     # cmake prefers dynamic libs and there's no option to change it, so
+  #     # we have to remove them to give it no other option than using static.
+  #     - name: Remove dylibs
+  #       run: |
+  #         rm /usr/local/opt/openssl/lib/*.dylib
+  #         rm /usr/local/opt/pcre/lib/*.dylib
+  #         rm /usr/local/opt/zlib/lib/*.dylib
 
-      - name: Build nginx
-        env:
-          NGINX_MODULES: ${{ env.NGINX_MODULES }}
-          CFLAGS: ${{ env.CFLAGS }} -I/usr/local/opt/openssl/include -I/usr/local/opt/pcre/include -I/usr/local/opt/zlib/include
-          LDFLAGS: ${{ env.DARWIN_LDFLAGS }} -L/usr/local/opt/openssl/lib -L/usr/local/opt/pcre/lib -L/usr/local/opt/zlib/lib
-        run: ./master/scripts/build-nginx
+  #     - name: Build nginx
+  #       env:
+  #         NGINX_MODULES: ${{ env.NGINX_MODULES }}
+  #         CFLAGS: ${{ env.CFLAGS }} -I/usr/local/opt/openssl/include -I/usr/local/opt/pcre/include -I/usr/local/opt/zlib/include
+  #         LDFLAGS: ${{ env.DARWIN_LDFLAGS }} -L/usr/local/opt/openssl/lib -L/usr/local/opt/pcre/lib -L/usr/local/opt/zlib/lib
+  #       run: ./master/scripts/build-nginx
 
-      - name: Upload nginx binary to artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          path: artifact/*
+  #     - name: Upload nginx binary to artifacts
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         path: artifact/*
 
   nginx-x86_64-win32:
     name: nginx-${{ matrix.NGINX_VERSION }}-x86_64-win32
@@ -230,8 +231,8 @@ jobs:
     strategy:
       matrix:
         NGINX_VERSION:
-          - 1.20.x
-          - 1.21.x
+          # - 1.20.x
+          # - 1.21.x
           - 1.22.x
     steps:
       - name: Remove nginx/njs from NGINX_MODULES (not supported on Windows)
@@ -289,10 +290,10 @@ jobs:
   upload:
     name: Upload binaries
     needs:
-      - njs-multi-linux
-      - njs-x86_64-darwin
-      - nginx-multi-linux
-      - nginx-x86_64-darwin
+      # - njs-multi-linux
+      # - njs-x86_64-darwin
+      # - nginx-multi-linux
+      # - nginx-x86_64-darwin
       - nginx-x86_64-win32
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-20.04
@@ -335,34 +336,48 @@ jobs:
         if: env.SKIP_SAME_SOURCES != 'true'
         run: mv -v artifact/* binaries/
 
-      - name: Generate index.json
-        run: ./master/scripts/generate-index --json binaries/ binaries/index.json
-
-      - name: Generate index.csv
-        run: ./master/scripts/generate-index --csv binaries/ binaries/index.csv
-
-      - name: Generate index.html
-        working-directory: binaries
-        run: tree -hv -H . -o index.html .
-
-      - name: Check if there are any changes
-        id: has_changes
-        working-directory: binaries
+      - name: Generate release tag
+        id: tag
         run: |
-          git status || exit 1
-          test -n "$(git status --porcelain)" && result=yes || result=no
-          echo ::set-output name=result::$result
+          echo "::set-output name=release_tag::$(date +"%Y.%m.%d-%H%M")"
+          echo "::set-output name=status::success"
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        if: steps.tag.outputs.status == 'success' && !cancelled()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          files: binaries/*.exe
 
-      - name: Commit changes
-        if: steps.has_changes.outputs.result == 'yes'
-        working-directory: binaries
-        run: |
-          git config --local user.email "github-actions@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add --all
-          git commit -m "Built from ${{ github.sha }}"
+      # - name: Generate index.json
+      #   run: ./master/scripts/generate-index --json binaries/ binaries/index.json
 
-      - name: Push changes back to origin
-        if: steps.has_changes.outputs.result == 'yes'
-        working-directory: binaries
-        run: git push https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git binaries
+      # - name: Generate index.csv
+      #   run: ./master/scripts/generate-index --csv binaries/ binaries/index.csv
+
+      # - name: Generate index.html
+      #   working-directory: binaries
+      #   run: tree -hv -H . -o index.html .
+
+      # - name: Check if there are any changes
+      #   id: has_changes
+      #   working-directory: binaries
+      #   run: |
+      #     git status || exit 1
+      #     test -n "$(git status --porcelain)" && result=yes || result=no
+      #     echo ::set-output name=result::$result
+
+      # - name: Commit changes
+      #   if: steps.has_changes.outputs.result == 'yes'
+      #   working-directory: binaries
+      #   run: |
+      #     git config --local user.email "github-actions@users.noreply.github.com"
+      #     git config --local user.name "github-actions[bot]"
+      #     git add --all
+      #     git commit -m "Built from ${{ github.sha }}"
+
+      # - name: Push changes back to origin
+      #   if: steps.has_changes.outputs.result == 'yes'
+      #   working-directory: binaries
+      #   run: git push https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git binaries
