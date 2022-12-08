@@ -104,7 +104,7 @@ case "$HOST_OS" in
 	;;
 esac
 
-make
+make -j$(nproc)
 
 ls -lah objs
 strip objs/nginx$EXEEXT
