@@ -244,7 +244,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           update: false
-          install: base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-jq
+          install: base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-jq mingw-w64-libxml2 mingw-w64-libxslt
 
       - name: Checkout master branch
         uses: actions/checkout@v2
